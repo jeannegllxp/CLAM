@@ -14,7 +14,7 @@ args:
 """
 class Attn_Net(nn.Module):
 
-    def __init__(self, L = 1024, D = 256, dropout = False, n_classes = 1):
+    def __init__(self, L = 768, D = 64, dropout = False, n_classes = 1):
         super(Attn_Net, self).__init__()
         self.module = [
             nn.Linear(L, D),
@@ -22,7 +22,7 @@ class Attn_Net(nn.Module):
 
         if dropout:
             self.module.append(nn.Dropout(0.25))
-
+            
         self.module.append(nn.Linear(D, n_classes))
         
         self.module = nn.Sequential(*self.module)
@@ -39,7 +39,7 @@ args:
     n_classes: number of classes 
 """
 class Attn_Net_Gated(nn.Module):
-    def __init__(self, L = 1024, D = 256, dropout = False, n_classes = 1):
+    def __init__(self, L = 768, D = 64, dropout = False, n_classes = 1):
         super(Attn_Net_Gated, self).__init__()
         self.attention_a = [
             nn.Linear(L, D),
@@ -76,9 +76,11 @@ args:
 """
 class CLAM_SB(nn.Module):
     def __init__(self, gate = True, size_arg = "small", dropout = 0., k_sample=8, n_classes=2,
-        instance_loss_fn=nn.CrossEntropyLoss(), subtyping=False, embed_dim=1024):
+        instance_loss_fn=nn.CrossEntropyLoss(), subtyping=False, embed_dim=768):
         super().__init__()
-        self.size_dict = {"small": [embed_dim, 512, 256], "big": [embed_dim, 512, 384]}
+        #self.size_dict = {"small": [embed_dim, 384, 256], "big": [embed_dim, 384, 384]}
+        self.size_dict = {"small": [embed_dim, 128, 64], "big": [embed_dim, 256, 128]}
+
         size = self.size_dict[size_arg]
         fc = [nn.Linear(size[0], size[1]), nn.ReLU(), nn.Dropout(dropout)]
         if gate:
@@ -182,9 +184,11 @@ class CLAM_SB(nn.Module):
 
 class CLAM_MB(CLAM_SB):
     def __init__(self, gate = True, size_arg = "small", dropout = 0., k_sample=8, n_classes=2,
-        instance_loss_fn=nn.CrossEntropyLoss(), subtyping=False, embed_dim=1024):
+        instance_loss_fn=nn.CrossEntropyLoss(), subtyping=False, embed_dim=768):
         nn.Module.__init__(self)
-        self.size_dict = {"small": [embed_dim, 512, 256], "big": [embed_dim, 512, 384]}
+        #self.size_dict = {"small": [embed_dim, 384, 256], "big": [embed_dim, 384, 384]}
+        self.size_dict = {"small": [embed_dim, 128, 64], "big": [embed_dim, 256, 128]}
+
         size = self.size_dict[size_arg]
         fc = [nn.Linear(size[0], size[1]), nn.ReLU(), nn.Dropout(dropout)]
         if gate:
