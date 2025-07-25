@@ -41,10 +41,11 @@ parser.add_argument('--micro_average', action='store_true', default=False,
 parser.add_argument('--split', type=str, choices=['train', 'val', 'test', 'all'], default='test')
 parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal',  'task_2_tumor_subtyping'])
 parser.add_argument('--drop_out', type=float, default=0.25, help='dropout')
-parser.add_argument('--embed_dim', type=int, default=1024)
+parser.add_argument('--embed_dim', type=int, default=768)
 args = parser.parse_args()
 
-device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 args.save_dir = os.path.join('./eval_results', 'EVAL_' + str(args.save_exp_code))
 args.models_dir = os.path.join(args.results_dir, str(args.models_exp_code))
@@ -72,11 +73,12 @@ f.close()
 print(settings)
 if args.task == 'task_1_tumor_vs_normal':
     args.n_classes=2
-    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/tumor_vs_normal_dummy_clean.csv',
-                            data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
+    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/slide_labels.csv',
+                            #data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
+                            data_dir = os.path.join(args.data_root_dir, "trident/trident_slides/20x_512px_0px_overlap/features_conch_v15"),
                             shuffle = False, 
                             print_info = True,
-                            label_dict = {'normal_tissue':0, 'tumor_tissue':1},
+                            label_dict = {0:0, 1:1},
                             patient_strat=False,
                             ignore=[])
 
