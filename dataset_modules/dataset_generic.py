@@ -319,7 +319,7 @@ class Generic_MIL_Dataset(Generic_WSI_Classification_Dataset):
 	
 		super(Generic_MIL_Dataset, self).__init__(**kwargs)
 		self.data_dir = data_dir
-		self.use_h5 = False
+		self.use_h5 = True
 
 	def load_from_h5(self, toggle):
 		self.use_h5 = toggle
