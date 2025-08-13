@@ -22,6 +22,7 @@ import numpy as np
 
 
 def main(args):
+    print(f"[DEBUG] args.task = '{args.task}'")
     # create results directory if necessary
     if not os.path.isdir(args.results_dir):
         os.mkdir(args.results_dir)
@@ -68,7 +69,7 @@ def main(args):
 parser = argparse.ArgumentParser(description='Configurations for WSI Training')
 parser.add_argument('--data_root_dir', type=str, default=None, 
                     help='data directory')
-parser.add_argument('--embed_dim', type=int, default=1024)
+parser.add_argument('--embed_dim', type=int, default=768)
 parser.add_argument('--max_epochs', type=int, default=200,
                     help='maximum number of epochs to train (default: 200)')
 parser.add_argument('--lr', type=float, default=1e-4,
@@ -93,12 +94,12 @@ parser.add_argument('--opt', type=str, choices = ['adam', 'sgd'], default='adam'
 parser.add_argument('--drop_out', type=float, default=0.25, help='dropout')
 parser.add_argument('--bag_loss', type=str, choices=['svm', 'ce'], default='ce',
                      help='slide-level classification loss function (default: ce)')
-parser.add_argument('--model_type', type=str, choices=['clam_sb', 'clam_mb', 'mil'], default='clam_sb', 
+parser.add_argument('--model_type', type=str, choices=['clam_sb', 'clam_mb', 'clam_sasb','mil'], default='clam_sb', 
                     help='type of model (default: clam_sb, clam w/ single attention branch)')
 parser.add_argument('--exp_code', type=str, help='experiment code for saving results')
 parser.add_argument('--weighted_sample', action='store_true', default=False, help='enable weighted sampling')
 parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', help='size of model, does not affect mil')
-parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal',  'task_2_tumor_subtyping'])
+parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal',  'task_1_tumor_vs_normal_sasb',  'task_2_tumor_subtyping'])
 ### CLAM specific options
 parser.add_argument('--no_inst_cluster', action='store_true', default=False,
                      help='disable instance-level clustering')
@@ -111,6 +112,7 @@ parser.add_argument('--bag_weight', type=float, default=0.7,
 parser.add_argument('--B', type=int, default=8, help='numbr of positive/negative patches to sample for clam')
 args = parser.parse_args()
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def seed_torch(seed=7):
     import random
@@ -126,7 +128,7 @@ def seed_torch(seed=7):
 
 seed_torch(args.seed)
 
-encoding_size = 1024
+encoding_size = 768
 settings = {'num_splits': args.k, 
             'k_start': args.k_start,
             'k_end': args.k_end,
@@ -145,21 +147,34 @@ settings = {'num_splits': args.k,
             'weighted_sample': args.weighted_sample,
             'opt': args.opt}
 
-if args.model_type in ['clam_sb', 'clam_mb']:
+if args.model_type in ['clam_sb', 'clam_mb', 'clam_sasb']:
    settings.update({'bag_weight': args.bag_weight,
                     'inst_loss': args.inst_loss,
                     'B': args.B})
 
 print('\nLoad Dataset')
 
+print(f"TASK received: '{args.task}'")
 if args.task == 'task_1_tumor_vs_normal':
     args.n_classes=2
-    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/tumor_vs_normal_dummy_clean.csv',
-                            data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
+    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/slide_labels.csv',
+                            #data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
+                            data_dir = os.path.join(args.data_root_dir, "trident/trident_slides/20x_512px_0px_overlap/features_conch_v15"),
                             shuffle = False, 
                             seed = args.seed, 
                             print_info = True,
-                            label_dict = {'normal_tissue':0, 'tumor_tissue':1},
+                            label_dict = {0:0, 1:1},
+                            patient_strat=False,
+                            ignore=[])
+if args.task == 'task_1_tumor_vs_normal_sasb':
+    args.n_classes=2
+    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/slide_labels.csv',
+                            #data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
+                            data_dir = os.path.join(args.data_root_dir, "trident/trident_slides/20x_512px_0px_overlap/features_conch_v15"),
+                            shuffle = False, 
+                            seed = args.seed, 
+                            print_info = True,
+                            label_dict = {0:0, 1:1},
                             patient_strat=False,
                             ignore=[])
 
@@ -174,10 +189,11 @@ elif args.task == 'task_2_tumor_subtyping':
                             patient_strat= False,
                             ignore=[])
 
-    if args.model_type in ['clam_sb', 'clam_mb']:
+    if args.model_type in ['clam_sb', 'clam_mb', 'clam_sasb']:
         assert args.subtyping 
         
 else:
+    print(f"Task '{args.task}' not implemented.")
     raise NotImplementedError
     
 if not os.path.isdir(args.results_dir):
@@ -207,6 +223,7 @@ for key, val in settings.items():
     print("{}:  {}".format(key, val))        
 
 if __name__ == "__main__":
+    print(f"[DEBUG] args.task = '{args.task}'")
     results = main(args)
     print("finished!")
     print("end script")

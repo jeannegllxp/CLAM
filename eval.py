@@ -30,7 +30,7 @@ parser.add_argument('--splits_dir', type=str, default=None,
                     help='splits directory, if using custom splits other than what matches the task (default: None)')
 parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', 
                     help='size of model (default: small)')
-parser.add_argument('--model_type', type=str, choices=['clam_sb', 'clam_mb', 'mil'], default='clam_sb', 
+parser.add_argument('--model_type', type=str, choices=['clam_sb', 'clam_mb','clam_sasb', 'mil'], default='clam_sb', 
                     help='type of model (default: clam_sb)')
 parser.add_argument('--k', type=int, default=10, help='number of folds (default: 10)')
 parser.add_argument('--k_start', type=int, default=-1, help='start fold (default: -1, last fold)')
@@ -39,12 +39,13 @@ parser.add_argument('--fold', type=int, default=-1, help='single fold to evaluat
 parser.add_argument('--micro_average', action='store_true', default=False, 
                     help='use micro_average instead of macro_avearge for multiclass AUC')
 parser.add_argument('--split', type=str, choices=['train', 'val', 'test', 'all'], default='test')
-parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal',  'task_2_tumor_subtyping'])
+parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal','task_1_tumor_vs_normal_sasb',  'task_2_tumor_subtyping'])
 parser.add_argument('--drop_out', type=float, default=0.25, help='dropout')
-parser.add_argument('--embed_dim', type=int, default=1024)
+parser.add_argument('--embed_dim', type=int, default=768)
 args = parser.parse_args()
 
-device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 args.save_dir = os.path.join('./eval_results', 'EVAL_' + str(args.save_exp_code))
 args.models_dir = os.path.join(args.results_dir, str(args.models_exp_code))
@@ -72,13 +73,26 @@ f.close()
 print(settings)
 if args.task == 'task_1_tumor_vs_normal':
     args.n_classes=2
-    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/tumor_vs_normal_dummy_clean.csv',
-                            data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
+    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/slide_labels.csv',
+                            #data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
+                            data_dir = os.path.join(args.data_root_dir, "trident/trident_slides/20x_512px_0px_overlap/features_conch_v15"),
                             shuffle = False, 
                             print_info = True,
-                            label_dict = {'normal_tissue':0, 'tumor_tissue':1},
+                            label_dict = {0:0, 1:1},
                             patient_strat=False,
                             ignore=[])
+if args.task == 'task_1_tumor_vs_normal_sasb':
+    args.n_classes=2
+    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/slide_labels.csv',
+                            #data_dir= os.path.join(args.data_root_dir, 'tumor_vs_normal_resnet_features'),
+                            data_dir = os.path.join(args.data_root_dir, "trident/trident_slides/20x_512px_0px_overlap/features_conch_v15"),
+                            shuffle = False, 
+                            print_info = True,
+                            label_dict = {0:0, 1:1},
+                            patient_strat=False,
+                            ignore=[])    
+
+
 
 elif args.task == 'task_2_tumor_subtyping':
     args.n_classes=3
@@ -141,4 +155,12 @@ if __name__ == "__main__":
         save_name = 'summary_partial_{}_{}.csv'.format(folds[0], folds[-1])
     else:
         save_name = 'summary.csv'
-    final_df.to_csv(os.path.join(args.save_dir, save_name))
+
+    #section to add the mean of the all value across the folds of the model to summary.csv
+    mean_auc = np.mean(all_auc)
+    mean_acc = np.mean(all_acc)
+    mean_row = pd.DataFrame([{'folds': 'mean', 'test_auc': mean_auc, 'test_acc': mean_acc}])
+    final_df = pd.concat([final_df, mean_row], ignore_index=True)
+    final_df.to_csv(os.path.join(args.save_dir, save_name), index=False)
+    print(f"\nSaved summary with mean row to {save_name}")
+

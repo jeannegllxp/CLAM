@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from models.model_mil import MIL_fc, MIL_fc_mc
-from models.model_clam import CLAM_SB, CLAM_MB
+from models.model_clam import CLAM_SB, CLAM_MB, CLAM_StochasticAttention_SB
 import pdb
 import os
 import pandas as pd
@@ -14,17 +14,19 @@ from sklearn.metrics import roc_auc_score, roc_curve, auc
 from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 
-def initiate_model(args, ckpt_path, device='cuda'):
+def initiate_model(args, ckpt_path, device='cpu'):
     print('Init Model')    
     model_dict = {"dropout": args.drop_out, 'n_classes': args.n_classes, "embed_dim": args.embed_dim}
     
-    if args.model_size is not None and args.model_type in ['clam_sb', 'clam_mb']:
+    if args.model_size is not None and args.model_type in ['clam_sb', 'clam_mb','clam_sasb']:
         model_dict.update({"size_arg": args.model_size})
     
     if args.model_type =='clam_sb':
         model = CLAM_SB(**model_dict)
     elif args.model_type =='clam_mb':
         model = CLAM_MB(**model_dict)
+    elif args.model_type =='clam_sasb':
+        model = CLAM_StochasticAttention_SB(**model_dict)
     else: # args.model_type == 'mil'
         if args.n_classes > 2:
             model = MIL_fc_mc(**model_dict)
